@@ -4,9 +4,20 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        border: {
+          DEFAULT: 'rgb(226, 232, 240)',
+          dark: 'rgb(51, 65, 85)'
+        },
+        input: {
+          DEFAULT: 'rgb(226, 232, 240)',
+          dark: 'rgb(51, 65, 85)'
+        },
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -24,7 +35,7 @@ export default {
           50: '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
-          300: '#cbd5e1', 
+          300: '#cbd5e1',
           400: '#94a3b8',
           500: '#64748b',
           600: '#475569',
@@ -45,7 +56,7 @@ export default {
           800: '#065f46',
           900: '#064e3b',
           950: '#022c22',
-        },
+        }
       },
       fontFamily: {
         sans: ['Inter var', 'Inter', 'sans-serif'],
@@ -55,24 +66,9 @@ export default {
       borderRadius: {
         '4xl': '2rem',
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'float': 'float 6s ease-in-out infinite',
-      },
-      keyframes: {
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        }
-      },
       boxShadow: {
         'glow': '0 0 15px -3px rgba(14, 165, 233, 0.4), 0 0 6px -2px rgba(14, 165, 233, 0.2)',
-        'inner-glow': 'inset 0 2px 4px 0 rgba(14, 165, 233, 0.06)',
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-      },
+      }
     },
   },
   plugins: [],
