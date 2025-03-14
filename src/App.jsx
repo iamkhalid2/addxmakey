@@ -11,7 +11,7 @@ import Scene3D from './components/canvas/Scene3D';
 import CommandInterface from './components/commander/CommandInterface';
 
 // Hooks
-import useImageProcessor from './hooks/useImageProcessor';
+import useGeminiImageProcessor from './hooks/useGeminiImageProcessor';
 
 const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -24,8 +24,9 @@ const App = () => {
     processCommand,
     undoLastOperation,
     history,
-    processing
-  } = useImageProcessor();
+    processing,
+    error
+  } = useGeminiImageProcessor();
 
   // Simulate initial loading
   useEffect(() => {
@@ -45,8 +46,7 @@ const App = () => {
       return undoLastOperation();
     }
     
-    const result = await processCommand(command);
-    return result;
+    return processCommand(command);
   };
 
   const handleDownload = () => {
@@ -55,7 +55,7 @@ const App = () => {
     // Create a temporary link to download the image
     const link = document.createElement('a');
     link.href = currentImage;
-    link.download = `photoscript-${Date.now()}.png`;
+    link.download = `gemini-edit-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -84,7 +84,7 @@ const App = () => {
                 </svg>
               </div>
               <p className="font-display text-xl text-secondary-900 dark:text-secondary-100">
-                PhotoScript
+                Gemini AI Image Editor
               </p>
               <div className="mt-4 flex space-x-2">
                 <motion.div
@@ -125,10 +125,10 @@ const App = () => {
           <section className="mb-12">
             <div className="flex flex-col items-center">
               <h2 className="text-3xl font-display font-semibold text-secondary-900 dark:text-secondary-100 mb-2">
-                Image Studio
+                Gemini AI Image Editor
               </h2>
               <p className="text-secondary-600 dark:text-secondary-400 mb-8 max-w-2xl text-center">
-                Upload an image and transform it using simple commands. Start by dragging an image or using the upload button below.
+                Upload an image and transform it using natural language commands powered by Google's Gemini AI.
               </p>
 
               {/* Toggle view mode */}
@@ -284,51 +284,44 @@ const App = () => {
             <section className="mt-12">
               <div className="text-center mb-12">
                 <h2 className="text-2xl font-display font-semibold text-secondary-900 dark:text-secondary-100 mb-4">
-                  Transform images with simple commands
+                  Edit images with AI using natural language
                 </h2>
                 <p className="text-secondary-600 dark:text-secondary-400 max-w-2xl mx-auto">
-                  PhotoScript lets you edit images using intuitive text commands. Upload an image and try these commands.
+                  Our app lets you edit images using Google's Gemini AI. Just upload an image and describe the changes you want.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FeatureCard
-                  title="Image Transformations"
-                  description="Rotate, flip, crop, and resize your images with simple text commands."
+                  title="Smart Editing"
+                  description="Describe what you want in plain text and let Gemini AI handle the complex editing work."
                   icon={(
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                      <line x1="8" y1="2" x2="8" y2="18" />
-                      <line x1="16" y1="6" x2="16" y2="22" />
+                      <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+                      <path d="M20.83 11A10 10 0 0 0 12 2v10h8.83z" />
                     </svg>
                   )}
                 />
                 
                 <FeatureCard
-                  title="Apply Filters"
-                  description="Enhance with filters like grayscale, sepia, and invert to change the look and feel."
+                  title="Style Transfer"
+                  description="Transform your images into different artistic styles with a simple command."
                   icon={(
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="9 11 12 14 22 4" />
-                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                      <line x1="9" y1="9" x2="9.01" y2="9" />
+                      <line x1="15" y1="9" x2="15.01" y2="9" />
                     </svg>
                   )}
                 />
                 
                 <FeatureCard
-                  title="Brightness Adjustment"
-                  description="Adjust brightness levels to perfect your image's exposure."
+                  title="Creative Effects"
+                  description="Add effects, filters, and modifications using natural language commands."
                   icon={(
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="5" />
-                      <line x1="12" y1="1" x2="12" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="23" />
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                      <line x1="1" y1="12" x2="3" y2="12" />
-                      <line x1="21" y1="12" x2="23" y2="12" />
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                   )}
                 />

@@ -46,14 +46,14 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
   const commandInputRef = useRef(null);
   const historyContainerRef = useRef(null);
   
-  // Example suggestions for image processing
+  // Updated suggestions for Gemini image editing
   const defaultSuggestions = [
-    { icon: '🔄', command: 'rotate 90' },
-    { icon: '✂️', command: 'crop' },
-    { icon: '🖌️', command: 'filter grayscale' },
-    { icon: '🔍', command: 'resize 800x600' },
-    { icon: '💾', command: 'save image' },
-    { icon: '🌈', command: 'adjust brightness +10' }
+    { icon: '🌈', command: 'make it more colorful' },
+    { icon: '🎨', command: 'convert to cartoon style' },
+    { icon: '🖼️', command: 'add a decorative frame' },
+    { icon: '🌅', command: 'make it look like sunset' },
+    { icon: '✏️', command: 'convert to pencil sketch' },
+    { icon: '🔄', command: 'flip horizontally' }
   ];
   
   // Scroll to bottom of history when new commands are added
@@ -90,27 +90,35 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
     setHistory([...history, newCommand]);
     setIsProcessing(true);
     
-    // Process command (simulated)
-    setTimeout(() => {
-      // Add response to the command
-      setHistory(prev => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        updated[lastIndex] = {
-          ...updated[lastIndex],
-          response: `Processed command: ${command}`
-        };
-        return updated;
+    // Process command via parent component
+    onCommandSubmit(command)
+      .then(result => {
+        // Add response to the command
+        setHistory(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            response: result.message || `Processed with Gemini AI: ${command}`
+          };
+          return updated;
+        });
+        setIsProcessing(false);
+        setCommand('');
+      })
+      .catch(error => {
+        // Handle error
+        setHistory(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            response: `Error: ${error.message || 'Failed to process command'}`
+          };
+          return updated;
+        });
+        setIsProcessing(false);
       });
-      
-      // Pass command to parent component
-      if (onCommandSubmit) {
-        onCommandSubmit(command);
-      }
-      
-      setIsProcessing(false);
-      setCommand('');
-    }, 800);
   };
   
   const handleSuggestionClick = (suggestionText) => {
@@ -137,7 +145,7 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
             <div className="w-3 h-3 rounded-full bg-secondary-600" />
           </div>
           <div className="flex-1 text-center">
-            <span className="text-xs font-medium text-secondary-400">Command Terminal</span>
+            <span className="text-xs font-medium text-secondary-400">Gemini AI Image Editor</span>
           </div>
           <div className="w-12"></div> {/* Spacer for symmetry */}
         </div>
@@ -152,7 +160,7 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
                 <polyline points="4 17 10 11 4 5" />
                 <line x1="12" y1="19" x2="20" y2="19" />
               </svg>
-              <p className="text-sm">Enter commands below to manipulate your image</p>
+              <p className="text-sm">Enter commands to edit your image with Gemini AI</p>
             </div>
           ) : (
             history.map((cmd, index) => (
@@ -186,7 +194,7 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
                     transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
                   />
                 </div>
-                <span className="text-xs text-secondary-500">Processing...</span>
+                <span className="text-xs text-secondary-500">Processing with Gemini AI...</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -203,7 +211,7 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={hasImage ? "Enter a command..." : "Upload an image first..."}
+              placeholder={hasImage ? "Describe how to edit the image..." : "Upload an image first..."}
               className="flex-1 bg-transparent text-secondary-100 placeholder:text-secondary-500 outline-none font-mono text-sm"
               disabled={!hasImage || isProcessing}
             />
@@ -231,7 +239,7 @@ const CommandInterface = ({ onCommandSubmit, hasImage }) => {
         {/* Command suggestions */}
         {hasImage && suggestions.length > 0 && !isProcessing && (
           <div className="mt-3">
-            <div className="text-xs text-secondary-500 mb-2">Suggestions:</div>
+            <div className="text-xs text-secondary-500 mb-2">Gemini AI Suggestions:</div>
             <div className="flex flex-wrap gap-2">
               {suggestions.slice(0, 4).map((suggestion, index) => (
                 <CommandSuggestion 
