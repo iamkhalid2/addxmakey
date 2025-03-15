@@ -8,10 +8,11 @@ import os
 import base64
 import io
 import sys
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from typing import Optional, List, Dict, Any
 import uuid
 from dotenv import load_dotenv
+import imghdr  # Add this to help with image format detection
 
 # Load environment variables
 load_dotenv()
@@ -124,9 +125,18 @@ async def process_image(
                     if not data or len(data) == 0:
                         print("Empty image data received")
                         continue
-                        
-                    # Create a new BytesIO object to avoid any buffer position issues
+                    
+                    # Write data to disk for debugging (optional)
+                    # with open("debug_image.bin", "wb") as f:
+                    #     f.write(data)
+                    
+                    # Try to detect the image format
+                    img_format = imghdr.what(None, h=data)
+                    print(f"Detected image format: {img_format}")
+                    
+                    # Create a new BytesIO object with the image data
                     img_data = io.BytesIO(data)
+                    img_data.seek(0)  # Ensure we're at the start of the stream
                     
                     try:
                         # Try to open the image data to verify it's valid
@@ -134,27 +144,67 @@ async def process_image(
                         # Force load the image data to verify it's complete
                         test_img.load()
                         print(f"Verified image data: format={test_img.format}, size={test_img.size}")
-                        test_img.close()
-                    except Exception as img_err:
-                        print(f"Invalid image data received: {str(img_err)}")
-                        # Try alternative approach - sometimes the format might just be misidentified
-                        try:
-                            # Attempt to save and reload the image to fix potential format issues
-                            temp_buffer = io.BytesIO()
-                            temp_buffer.write(data)
-                            temp_buffer.seek(0)
-                            
-                            # Force format to PNG which is commonly returned by Gemini
-                            temp_img = Image.open(temp_buffer)
-                            converted_buffer = io.BytesIO()
-                            temp_img.save(converted_buffer, format="PNG")
-                            converted_buffer.seek(0)
-                            data = converted_buffer.getvalue()
-                            print("Successfully recovered and converted image data")
-                        except Exception as recovery_err:
-                            print(f"Image recovery failed: {str(recovery_err)}")
-                            continue
                         
+                        # Save to a new buffer with explicit format
+                        output_buffer = io.BytesIO()
+                        test_img.save(output_buffer, format=test_img.format)
+                        output_buffer.seek(0)
+                        data = output_buffer.getvalue()
+                        
+                        test_img.close()
+                    except (UnidentifiedImageError, IOError) as img_err:
+                        print(f"Invalid image data received: {str(img_err)}")
+                        # Try different formats
+                        for fmt in ['PNG', 'JPEG', 'GIF', 'WEBP']:
+                            try:
+                                print(f"Attempting to save as {fmt}")
+                                # Create a new BytesIO object for each attempt
+                                temp_buffer = io.BytesIO()
+                                temp_buffer.write(data)
+                                temp_buffer.seek(0)
+                                
+                                # Try to force the format
+                                temp_img = Image.new('RGB', (1, 1))  # Create a dummy image
+                                temp_img.save(temp_buffer, format=fmt)  # Just to initialize the buffer
+                                
+                                temp_buffer.seek(0)
+                                temp_buffer.write(data)  # Write the actual data
+                                temp_buffer.seek(0)
+                                
+                                # Try to open and verify
+                                converted_img = Image.open(temp_buffer)
+                                converted_img.verify()  # This will raise an error if the data is invalid
+                                
+                                # If we get here, it worked
+                                print(f"Successfully identified as {fmt}")
+                                
+                                # Re-save with the correct format
+                                temp_buffer = io.BytesIO()
+                                temp_buffer.write(data)
+                                temp_buffer.seek(0)
+                                
+                                converted_img = Image.open(temp_buffer)
+                                output_buffer = io.BytesIO()
+                                converted_img.save(output_buffer, format=fmt)
+                                output_buffer.seek(0)
+                                data = output_buffer.getvalue()
+                                mime = f"image/{fmt.lower()}"
+                                
+                                break
+                            except Exception as e:
+                                print(f"Failed with {fmt}: {str(e)}")
+                                continue
+                        else:
+                            print("All format attempts failed")
+                            # If all attempts fail, try one more approach - save the raw bytes
+                            try:
+                                # Just use the raw bytes and set a generic image type
+                                print("Using raw bytes as PNG")
+                                mime = "image/png"
+                            except Exception as recovery_err:
+                                print(f"Image recovery completely failed: {str(recovery_err)}")
+                                continue
+                    
                     # Convert image data to base64 for frontend
                     encoded_data = base64.b64encode(data).decode('utf-8')
                     print(f"Base64 encoded data length: {len(encoded_data)}")
