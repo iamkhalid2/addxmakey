@@ -150,5 +150,7 @@ def serve_upload(filename):
 def serve_result(filename):
     return send_file(os.path.join(app.config['RESULT_FOLDER'], filename))
 
+# The if __name__ block is not needed for Vercel deployment
+# but it's kept for local development
 if __name__ == '__main__':
     app.run(debug=True)
