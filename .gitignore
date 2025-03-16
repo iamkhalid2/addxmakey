@@ -2,5 +2,6 @@ uploads
 results
 config.py
 Image_out.ipynb
+myenv/
 __pycache__/
 *.pyc
