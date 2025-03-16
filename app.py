@@ -7,13 +7,20 @@ from werkzeug.utils import secure_filename
 import PIL.Image
 import io
 import uuid
-import config  # Import the config module
+
+# Configuration - directly defined here for Vercel compatibility
+# These values will be overridden by environment variables if set
+API_KEY = os.environ.get("GEMINI_API_KEY", "your_default_api_key")
+MODEL_ID = os.environ.get("GEMINI_MODEL_ID", "gemini-2.0-flash-exp-image-generation")
+SECRET_KEY = os.environ.get("SECRET_KEY", "gemini_image_processor")
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
+RESULT_FOLDER = os.environ.get("RESULT_FOLDER", "results")
 
 # Initialize Flask with proper static folder configuration for Vercel
 app = Flask(__name__, static_folder='static')
-app.secret_key = config.SECRET_KEY
-app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
-app.config['RESULT_FOLDER'] = config.RESULT_FOLDER
+app.secret_key = SECRET_KEY
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['RESULT_FOLDER'] = RESULT_FOLDER
 app.config['SESSION_TYPE'] = 'filesystem'
 
 # Create folders if they don't exist
@@ -22,7 +29,7 @@ os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
 
 # Initialize the Gemini client
 try:
-    client = genai.Client(api_key=config.API_KEY)
+    client = genai.Client(api_key=API_KEY)
 except Exception as e:
     print(f"Error initializing Gemini client: {e}")
     client = None
@@ -51,7 +58,7 @@ def index():
         try:
             active_chats[chat_id] = {
                 'chat': client.chats.create(
-                    model=config.MODEL_ID,
+                    model=MODEL_ID,
                     config=types.GenerateContentConfig(
                         response_modalities=['Text', 'Image']
                     )
