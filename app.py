@@ -1,20 +1,30 @@
 import os
 import pathlib
-from flask import Flask, request, render_template, send_file, redirect, url_for, flash, session, send_from_directory
+import io
+import uuid
+import base64
+from flask import Flask, request, render_template, send_file, redirect, url_for, flash, session, send_from_directory, jsonify
 from google import genai
 from google.genai import types
 from werkzeug.utils import secure_filename
 import PIL.Image
-import io
-import uuid
+
+# Check if running on Vercel
+IS_VERCEL = os.environ.get('VERCEL', False)
 
 # Configuration - directly defined here for Vercel compatibility
 # These values will be overridden by environment variables if set
 API_KEY = os.environ.get("GEMINI_API_KEY", "your_default_api_key")
 MODEL_ID = os.environ.get("GEMINI_MODEL_ID", "gemini-2.0-flash-exp-image-generation")
 SECRET_KEY = os.environ.get("SECRET_KEY", "gemini_image_processor")
-UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
-RESULT_FOLDER = os.environ.get("RESULT_FOLDER", "results")
+
+# In Vercel, we'll use in-memory storage since the filesystem is read-only
+if IS_VERCEL:
+    UPLOAD_FOLDER = "/tmp/uploads"
+    RESULT_FOLDER = "/tmp/results"
+else:
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
+    RESULT_FOLDER = os.environ.get("RESULT_FOLDER", "results")
 
 # Initialize Flask with proper static folder configuration for Vercel
 app = Flask(__name__, static_folder='static')
@@ -23,9 +33,19 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['RESULT_FOLDER'] = RESULT_FOLDER
 app.config['SESSION_TYPE'] = 'filesystem'
 
-# Create folders if they don't exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
+# Create directories only if not on Vercel or if using /tmp (which is writable on Vercel)
+if not IS_VERCEL or (IS_VERCEL and '/tmp' in UPLOAD_FOLDER):
+    try:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
+    except OSError as e:
+        print(f"Warning: Could not create directories: {e}")
+        # Continue anyway, as we'll handle file operations carefully
+
+# In-memory storage for Vercel deployment
+if IS_VERCEL:
+    # Dictionary to store uploaded/generated images in memory
+    in_memory_files = {}
 
 # Initialize the Gemini client
 try:
@@ -38,13 +58,22 @@ except Exception as e:
 active_chats = {}
 
 def save_image(response, path):
+    """Save image from response, handling Vercel's read-only filesystem"""
     for part in response.candidates[0].content.parts:
         if part.text is not None:
             continue
         elif part.inline_data is not None:
             data = part.inline_data.data
-            pathlib.Path(path).write_bytes(data)
-    return os.path.basename(path)
+            if IS_VERCEL:
+                # In Vercel, store in memory dictionary instead of filesystem
+                filename = os.path.basename(path)
+                in_memory_files[filename] = data
+                return filename
+            else:
+                # Normal filesystem storage
+                pathlib.Path(path).write_bytes(data)
+                return os.path.basename(path)
+    return None
 
 @app.route('/')
 def index():
@@ -104,11 +133,19 @@ def generate_image():
             # Get the image file
             file = request.files['image']
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+            
+            if IS_VERCEL:
+                # For Vercel, keep the image in memory
+                image_data = file.read()
+                in_memory_files[filename] = image_data
+                image = PIL.Image.open(io.BytesIO(image_data))
+            else:
+                # Normal filesystem operation
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image = PIL.Image.open(filepath)
             
             # Send message with the uploaded image
-            image = PIL.Image.open(filepath)
             response = chat.send_message([prompt, image])
         else:
             # Send text-only message
@@ -123,14 +160,14 @@ def generate_image():
         # Save the image to a file
         result_filename = f"result_{int(os.urandom(4).hex(), 16)}.png"
         result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
-        save_image(response, result_path)
+        saved_filename = save_image(response, result_path)
         
         # Update chat history
         active_chats[chat_id]['history'].append({
             'prompt': prompt,
             'text_response': text_response,
-            'image_path': result_path,
-            'download_name': os.path.basename(result_path)
+            'image_path': f"results/{saved_filename}" if IS_VERCEL else result_path,
+            'download_name': saved_filename
         })
         
         return render_template('index.html', 
@@ -147,21 +184,51 @@ def reset_chat():
 
 @app.route('/download/<filename>')
 def download_file(filename):
-    return send_file(os.path.join(app.config['RESULT_FOLDER'], filename), as_attachment=True)
+    if IS_VERCEL and filename in in_memory_files:
+        # Serve from memory in Vercel
+        return send_file(
+            io.BytesIO(in_memory_files[filename]),
+            mimetype='image/png',
+            as_attachment=True,
+            download_name=filename
+        )
+    else:
+        # Serve from filesystem
+        return send_file(os.path.join(app.config['RESULT_FOLDER'], filename), as_attachment=True)
 
-# Add a new route to directly serve the images
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
-    return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    if IS_VERCEL and filename in in_memory_files:
+        # Serve from memory in Vercel
+        return send_file(
+            io.BytesIO(in_memory_files[filename]),
+            mimetype='image/png'
+        )
+    else:
+        # Serve from filesystem
+        return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
 @app.route('/results/<path:filename>')
 def serve_result(filename):
-    return send_file(os.path.join(app.config['RESULT_FOLDER'], filename))
+    if IS_VERCEL and filename in in_memory_files:
+        # Serve from memory in Vercel
+        return send_file(
+            io.BytesIO(in_memory_files[filename]),
+            mimetype='image/png'
+        )
+    else:
+        # Serve from filesystem
+        return send_file(os.path.join(app.config['RESULT_FOLDER'], filename))
 
 # Add explicit route for static files (helps with Vercel)
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory('static', filename)
+
+# Health check endpoint for Vercel
+@app.route('/_health')
+def health_check():
+    return jsonify({"status": "ok"})
 
 if __name__ == '__main__':
     app.run(debug=True)
