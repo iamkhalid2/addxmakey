@@ -1,6 +1,6 @@
 import os
 import pathlib
-from flask import Flask, request, render_template, send_file, redirect, url_for, flash, session, send_from_directory
+from flask import Flask, request, render_template, send_file, redirect, url_for, flash, session
 from google import genai
 from google.genai import types
 from werkzeug.utils import secure_filename
@@ -9,8 +9,7 @@ import io
 import uuid
 import config  # Import the config module
 
-# Initialize Flask - change static folder to 'static' for Vercel compatibility
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='./')
 app.secret_key = config.SECRET_KEY
 app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
 app.config['RESULT_FOLDER'] = config.RESULT_FOLDER
@@ -151,7 +150,5 @@ def serve_upload(filename):
 def serve_result(filename):
     return send_file(os.path.join(app.config['RESULT_FOLDER'], filename))
 
-# The if __name__ block is not needed for Vercel deployment
-# but it's kept for local development
 if __name__ == '__main__':
     app.run(debug=True)
