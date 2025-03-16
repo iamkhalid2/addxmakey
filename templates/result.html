@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Image Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .response-text {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .button-blue {
+            background-color: #2196F3;
+        }
+        .button-blue:hover {
+            background-color: #0b7dda;
+        }
+        .buttons-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Generated Image Result</h1>
+    
+    <div class="container">
+        {% if text_response %}
+        <h2>AI Response:</h2>
+        <div class="response-text">{{ text_response }}</div>
+        {% endif %}
+        
+        <h2>Generated Image:</h2>
+        <div class="image-container">
+            <img src="{{ url_for('static', filename='../'+image_path) }}" alt="Generated image">
+        </div>
+        
+        <div class="buttons-container">
+            <a href="{{ url_for('download_file', filename=download_name) }}" class="button">Download Image</a>
+            <a href="{{ url_for('index') }}" class="button button-blue">Generate Another</a>
+        </div>
+    </div>
+</body>
+</html>
