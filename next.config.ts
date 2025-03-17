@@ -9,11 +9,29 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/api/:path*",
+          destination: "/api/:path*",
+          has: [
+            {
+              type: "header",
+              key: "content-length",
+              value: "(?!(?:[0-9]|[0-9][0-9]|[0-9][0-9][0-9]|[0-9][0-9][0-9][0-9]|[0-9][0-9][0-9][0-9][0-9]|[0-9][0-9][0-9][0-9][0-9][0-9]|[0-9][0-9][0-9][0-9][0-9][0-9][0-9]|1[0-9]{7}|10[0-9]{6})$)",
+            },
+          ],
+          missing: [
+            {
+              type: "header",
+              key: "content-length",
+            },
+          ],
+        },
+      ],
+    };
   },
-};
+}
 
 export default nextConfig;
