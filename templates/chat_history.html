@@ -1,0 +1,31 @@
+{% if chat_history %}
+<div class="chat-history">
+    <h2>Conversation History</h2>
+    
+    {% for message in chat_history|reverse %}
+    <div class="chat-message">
+        <div class="user-message">
+            <strong>You:</strong> {{ message.prompt }}
+        </div>
+        
+        <div class="ai-response">
+            <strong>Gemini:</strong>
+            
+            {% if message.text_response %}
+            <div class="response-text">{{ message.text_response }}</div>
+            {% endif %}
+            
+            <div class="image-container">
+                <img src="/{{ message.image_path }}" alt="Generated image">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                </div>
+                <div>
+                    <a href="{{ url_for('download_file', filename=message.download_name) }}" class="button-download">Download Image</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

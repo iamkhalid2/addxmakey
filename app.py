@@ -9,22 +9,16 @@ from google.genai import types
 from werkzeug.utils import secure_filename
 import PIL.Image
 
+# Import configuration from config.py
+from config import API_KEY, MODEL_ID, SECRET_KEY, UPLOAD_FOLDER, RESULT_FOLDER
+
 # Check if running on Vercel
 IS_VERCEL = os.environ.get('VERCEL', False)
-
-# Configuration - directly defined here for Vercel compatibility
-# These values will be overridden by environment variables if set
-API_KEY = os.environ.get("GEMINI_API_KEY", "your_default_api_key")
-MODEL_ID = os.environ.get("GEMINI_MODEL_ID", "gemini-2.0-flash-exp-image-generation")
-SECRET_KEY = os.environ.get("SECRET_KEY", "gemini_image_processor")
 
 # In Vercel, we'll use in-memory storage since the filesystem is read-only
 if IS_VERCEL:
     UPLOAD_FOLDER = "/tmp/uploads"
     RESULT_FOLDER = "/tmp/results"
-else:
-    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
-    RESULT_FOLDER = os.environ.get("RESULT_FOLDER", "results")
 
 # Initialize Flask with proper static folder configuration for Vercel
 app = Flask(__name__, static_folder='static')
@@ -107,20 +101,38 @@ def index():
 @app.route('/generate', methods=['POST'])
 def generate_image():
     if client is None:
-        flash("API client not initialized. Please check your API key.")
-        return redirect(url_for('index'))
+        error_msg = "API client not initialized. Please check your API key."
+        # Check if it's an AJAX request
+        is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax_request:
+            return jsonify({'error': error_msg}), 500
+        else:
+            flash(error_msg)
+            return redirect(url_for('index'))
     
     # Get the chat ID from the session
     chat_id = session.get('chat_id')
     if not chat_id or chat_id not in active_chats:
-        flash("Chat session expired or not found. Starting a new one.")
-        return redirect(url_for('index'))
+        error_msg = "Chat session expired or not found. Starting a new one."
+        # Check if it's an AJAX request
+        is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax_request:
+            return jsonify({'error': error_msg}), 500
+        else:
+            flash(error_msg)
+            return redirect(url_for('index'))
     
     # Check if there's a prompt
     prompt = request.form.get('prompt', '')
     if not prompt:
-        flash("Please provide a prompt for image generation")
-        return redirect(url_for('index'))
+        error_msg = "Please provide a prompt for image generation"
+        # Check if it's an AJAX request
+        is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax_request:
+            return jsonify({'error': error_msg}), 400
+        else:
+            flash(error_msg)
+            return redirect(url_for('index'))
     
     # Check if there's an uploaded file (only for the initial message)
     has_file = 'image' in request.files and request.files['image'].filename != ''
@@ -170,11 +182,28 @@ def generate_image():
             'download_name': saved_filename
         })
         
-        return render_template('index.html', 
-                              chat_history=active_chats[chat_id]['history'])
+        # Check if it's an AJAX request
+        is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if is_ajax_request:
+            # Return only the chat history HTML snippet for AJAX requests
+            return render_template('chat_history.html', 
+                                  chat_history=active_chats[chat_id]['history'])
+        else:
+            # Return full page for non-AJAX requests (fallback)
+            return render_template('index.html', 
+                                  chat_history=active_chats[chat_id]['history'])
     except Exception as e:
-        flash(f"Error generating image: {str(e)}")
-        return redirect(url_for('index'))
+        error_msg = f"Error generating image: {str(e)}"
+        
+        # Check if it's an AJAX request
+        is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if is_ajax_request:
+            return jsonify({'error': error_msg}), 500
+        else:
+            flash(error_msg)
+            return redirect(url_for('index'))
 
 @app.route('/reset_chat')
 def reset_chat():

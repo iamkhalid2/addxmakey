@@ -51,6 +51,10 @@
         button:hover {
             background-color: #45a049;
         }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         .button-red {
             background-color: #f44336;
         }
@@ -90,6 +94,8 @@
         .image-container {
             text-align: center;
             margin: 15px 0;
+            position: relative;
+            min-height: 200px;
         }
         .image-container img {
             max-width: 100%;
@@ -118,6 +124,40 @@
         .button-download:hover {
             background-color: #0b7dda;
         }
+        /* Loading spinner styles */
+        .loading-container {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #canvas-loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -139,7 +179,7 @@
         </div>
         {% endif %}
         
-        <form action="{{ url_for('generate_image') }}" method="post" enctype="multipart/form-data">
+        <form id="gemini-form" action="{{ url_for('generate_image') }}" method="post" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="prompt">Your message:</label>
                 <textarea id="prompt" name="prompt" placeholder="e.g., 'Draw a 3D rendered image of a flying pig with wings and a top hat over a futuristic city' or 'Change the pig to a cat'" required></textarea>
@@ -154,39 +194,114 @@
             {% endif %}
             
             <div>
-                <button type="submit">Send Message</button>
+                <button id="submit-btn" type="submit">Send Message</button>
                 <a href="{{ url_for('reset_chat') }}"><button type="button" class="button-red">Start New Chat</button></a>
             </div>
         </form>
         
-        {% if chat_history %}
-        <div class="chat-history">
-            <h2>Conversation History</h2>
-            
-            {% for message in chat_history|reverse %}
-            <div class="chat-message">
-                <div class="user-message">
-                    <strong>You:</strong> {{ message.prompt }}
-                </div>
+        <!-- Loading indicator for canvas only -->
+        <div id="canvas-loading">
+            <div class="loading-spinner"></div>
+            <p>Generating image, please wait...</p>
+        </div>
+        
+        <div id="chat-container">
+            {% if chat_history %}
+            <div class="chat-history">
+                <h2>Conversation History</h2>
                 
-                <div class="ai-response">
-                    <strong>Gemini:</strong>
+                {% for message in chat_history|reverse %}
+                <div class="chat-message">
+                    <div class="user-message">
+                        <strong>You:</strong> {{ message.prompt }}
+                    </div>
                     
-                    {% if message.text_response %}
-                    <div class="response-text">{{ message.text_response }}</div>
-                    {% endif %}
-                    
-                    <div class="image-container">
-                        <img src="/{{ message.image_path }}" alt="Generated image">
-                        <div>
-                            <a href="{{ url_for('download_file', filename=message.download_name) }}" class="button-download">Download Image</a>
+                    <div class="ai-response">
+                        <strong>Gemini:</strong>
+                        
+                        {% if message.text_response %}
+                        <div class="response-text">{{ message.text_response }}</div>
+                        {% endif %}
+                        
+                        <div class="image-container">
+                            <img src="/{{ message.image_path }}" alt="Generated image">
+                            <div class="loading-container">
+                                <div class="loading-spinner"></div>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('download_file', filename=message.download_name) }}" class="button-download">Download Image</a>
+                            </div>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% endif %}
         </div>
-        {% endif %}
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('gemini-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const canvasLoading = document.getElementById('canvas-loading');
+            const chatContainer = document.getElementById('chat-container');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading state only for the canvas
+                canvasLoading.style.display = 'block';
+                submitBtn.disabled = true;
+                
+                // Create FormData from the form
+                const formData = new FormData(form);
+                
+                // AJAX request
+                fetch('{{ url_for("generate_image") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    // Check if response is JSON (error) or HTML (success)
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        // Handle JSON error response
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Unknown error occurred');
+                        });
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    // Update only the chat history content
+                    chatContainer.innerHTML = html;
+                    
+                    // Hide loading indicator and enable button
+                    canvasLoading.style.display = 'none';
+                    submitBtn.disabled = false;
+                    
+                    // Clear the prompt field
+                    document.getElementById('prompt').value = '';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    canvasLoading.style.display = 'none';
+                    submitBtn.disabled = false;
+                    
+                    // Show error message to user
+                    alert(error.message || 'An error occurred while generating the image. Please try again.');
+                    
+                    // If it's an API key error, reload the page to show the flash message
+                    if (error.message && error.message.includes('API key not valid')) {
+                        window.location.reload();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
