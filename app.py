@@ -8,9 +8,17 @@ from google import genai
 from google.genai import types
 from werkzeug.utils import secure_filename
 import PIL.Image
+from dotenv import load_dotenv
 
-# Import configuration from config.py
-from config import API_KEY, MODEL_ID, SECRET_KEY, UPLOAD_FOLDER, RESULT_FOLDER
+# Load environment variables from .env file
+load_dotenv()
+
+# Set configuration values
+API_KEY = os.environ.get("GEMINI_API_KEY")
+MODEL_ID = "gemini-2.0-flash-exp-image-generation"  # Hardcoded model ID
+UPLOAD_FOLDER = "uploads"
+RESULT_FOLDER = "results"
+SECRET_KEY = "gemini_image_processor"
 
 # Check if running on Vercel
 IS_VERCEL = os.environ.get('VERCEL', False)

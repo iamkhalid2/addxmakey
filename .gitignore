@@ -1,6 +1,6 @@
 uploads
 results
-config.py
+.env
 Image_out.ipynb
 myenv/
 __pycache__/
