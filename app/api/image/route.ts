@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { HistoryItem, HistoryPart } from "@/lib/types";
+import { HistoryItem } from "@/lib/types";
 
 // Initialize the Google Gen AI client with your API key
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
@@ -8,15 +8,6 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Define the model ID for Gemini 2.0 Flash experimental
 const MODEL_ID = "gemini-2.0-flash-exp-image-generation";
-
-// Define interface for the formatted history item
-interface FormattedHistoryItem {
-  role: "user" | "model";
-  parts: Array<{
-    text?: string;
-    inlineData?: { data: string; mimeType: string };
-  }>;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,8 +41,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Keep only last 2 interactions to prevent payload size issues
-    const limitedHistory = history?.slice(-2) || [];
+    // Validate and sanitize history before using it
+    const sanitizedHistory = history?.map((item: HistoryItem) => {
+      // Ensure item has required fields
+      if (!item || typeof item.role !== 'string' || !Array.isArray(item.parts)) {
+        return null;
+      }
+
+      // Filter out invalid parts
+      const validParts = item.parts.filter(part => {
+        return (part.text !== undefined && typeof part.text === 'string') ||
+               (part.image !== undefined && typeof part.image === 'string');
+      });
+
+      if (validParts.length === 0) return null;
+
+      return {
+        role: item.role,
+        parts: validParts
+      };
+    }).filter(Boolean);
+
+    // Keep only last 2 valid interactions
+    const limitedHistory = (sanitizedHistory || []).slice(-2);
 
     // Get the model with the correct configuration
     const model = genAI.getGenerativeModel({
@@ -68,133 +80,94 @@ export async function POST(req: NextRequest) {
     let result;
 
     try {
-      // Validate and format history more strictly
-      const formattedHistory = limitedHistory.map((item: HistoryItem) => {
-        if (!item || !item.role || !Array.isArray(item.parts)) {
-          console.warn('Skipping invalid history item:', item);
-          return null;
-        }
-
-        const validParts = item.parts.map(part => {
-          if (part.text) {
-            return { text: part.text };
-          }
-          if (part.image && item.role === "user") {
-            const imgParts = part.image.split(",");
-            if (imgParts.length > 1) {
-              return {
-                inlineData: {
-                  data: imgParts[1],
-                  mimeType: part.image.includes("image/png") ? "image/png" : "image/jpeg",
-                }
-              };
-            }
-          }
-          return null;
-        }).filter(Boolean);
-
-        if (validParts.length === 0) {
-          return null;
-        }
-
-        return {
-          role: item.role,
-          parts: validParts
-        };
-      }).filter(Boolean);
-
-      // Create a chat session with the validated history
+      // Create a chat session with validated history
       const chat = model.startChat({
-        history: formattedHistory,
+        history: limitedHistory || [],
       });
 
       // Prepare the current message parts
       const messageParts = [];
 
       // Add the text prompt
-      messageParts.push({ text: prompt });
+      if (prompt) {
+        messageParts.push({ text: prompt });
+      }
 
       // Add the image if provided
       if (inputImage) {
-        // For image editing
         console.log("Processing image edit request");
+        
+        try {
+          // Validate image data
+          if (!inputImage.startsWith("data:")) {
+            throw new Error("Invalid image data URL format");
+          }
 
-        // Check if the image is a valid data URL
-        if (!inputImage.startsWith("data:")) {
-          throw new Error("Invalid image data URL format");
+          const imageParts = inputImage.split(",");
+          if (imageParts.length < 2) {
+            throw new Error("Invalid image data URL format");
+          }
+
+          const base64Image = imageParts[1];
+          const mimeType = inputImage.includes("image/png") ? "image/png" : "image/jpeg";
+          
+          console.log("Base64 image length:", base64Image.length, "MIME type:", mimeType);
+
+          messageParts.push({
+            inlineData: {
+              data: base64Image,
+              mimeType: mimeType,
+            },
+          });
+        } catch (imageError) {
+          console.error("Error processing image:", imageError);
+          throw new Error(`Invalid image format: ${imageError.message}`);
         }
-
-        const imageParts = inputImage.split(",");
-        if (imageParts.length < 2) {
-          throw new Error("Invalid image data URL format");
-        }
-
-        const base64Image = imageParts[1];
-        const mimeType = inputImage.includes("image/png")
-          ? "image/png"
-          : "image/jpeg";
-        console.log(
-          "Base64 image length:",
-          base64Image.length,
-          "MIME type:",
-          mimeType
-        );
-
-        // Add the image to message parts
-        messageParts.push({
-          inlineData: {
-            data: base64Image,
-            mimeType: mimeType,
-          },
-        });
       }
 
-      // Send the message to the chat
+      // Ensure we have valid message parts before sending
+      if (messageParts.length === 0) {
+        throw new Error("No valid message parts to send");
+      }
+
       console.log("Sending message with", messageParts.length, "parts");
       result = await chat.sendMessage(messageParts);
-    } catch (error) {
-      console.error("Error in chat.sendMessage:", error);
-      throw error;
-    }
+      
+      // Validate response structure
+      if (!result?.response?.candidates?.[0]?.content?.parts) {
+        throw new Error("Invalid response format from Gemini API");
+      }
 
-    const response = result.response;
+      const response = result.response;
+      let textResponse = null;
+      let imageData = null;
+      let mimeType = "image/png";
 
-    let textResponse = null;
-    let imageData = null;
-    let mimeType = "image/png";
-
-    // Process the response
-    if (response.candidates && response.candidates.length > 0) {
+      // Process the response
       const parts = response.candidates[0].content.parts;
       console.log("Number of parts in response:", parts.length);
 
       for (const part of parts) {
-        if ("inlineData" in part && part.inlineData) {
-          // Get the image data
+        if (part && "inlineData" in part && part.inlineData) {
           imageData = part.inlineData.data;
           mimeType = part.inlineData.mimeType || "image/png";
-          console.log(
-            "Image data received, length:",
-            imageData.length,
-            "MIME type:",
-            mimeType
-          );
-        } else if ("text" in part && part.text) {
-          // Store the text
+          console.log("Image data received, length:", imageData.length, "MIME type:", mimeType);
+        } else if (part && "text" in part && part.text) {
           textResponse = part.text;
-          console.log(
-            "Text response received:",
-            textResponse.substring(0, 50) + "..."
-          );
+          console.log("Text response received:", textResponse.substring(0, 50) + "...");
         }
       }
-    }
 
-    // Return just the base64 image and description as JSON
-    return NextResponse.json({
-      image: imageData ? `data:${mimeType};base64,${imageData}` : null,
-      description: textResponse,
-    });
+      // Return the processed response
+      return NextResponse.json({
+        image: imageData ? `data:${mimeType};base64,${imageData}` : null,
+        description: textResponse,
+      });
+
+    } catch (error) {
+      console.error("Error in chat.sendMessage:", error);
+      throw error;
+    }
   } catch (error) {
     console.error("Error generating image:", error);
     return NextResponse.json(
