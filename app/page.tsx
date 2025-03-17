@@ -121,7 +121,7 @@ export default function Home() {
           <Image src="/ADAX.png" alt="addXmakeY logo" width={96} height={96} />
         </div>
         <span className="text-sm font-mono text-muted-foreground">
-          powered by Gemini 2.0 Flash
+          powered by 🦾
         </span>
       </CardHeader>
         <CardContent className="space-y-6 pt-6 w-full">

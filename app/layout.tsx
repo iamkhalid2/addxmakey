@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProviders } from "@/components/providers";
+import { Footer } from "@/components/Footer";
 
 const openSans = Open_Sans({
   weight: ["400", "500", "700"],
@@ -37,7 +38,14 @@ export default function RootLayout({
         className={`${openSans.className} antialiased bg-white dark:bg-slate-950`}
         suppressHydrationWarning
       >
-        <ThemeProviders>{children}</ThemeProviders>
+        <ThemeProviders>
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer />
+          </div>
+        </ThemeProviders>
       </body>
     </html>
   );
