@@ -20,6 +20,16 @@ interface FormattedHistoryItem {
 
 export async function POST(req: NextRequest) {
   try {
+    // Check request size before parsing
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (contentLength > maxSize) {
+      return NextResponse.json(
+        { error: "Request payload too large" },
+        { status: 413 }
+      );
+    }
+
     // Parse JSON request instead of FormData
     const requestData = await req.json();
     const { prompt, image: inputImage, history } = requestData;
@@ -30,6 +40,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Limit history size - keep only the last 2 interactions
+    const limitedHistory = history?.slice(-4) || [];
 
     // Get the model with the correct configuration
     const model = genAI.getGenerativeModel({
@@ -48,8 +61,8 @@ export async function POST(req: NextRequest) {
     try {
       // Convert history to the format expected by Gemini API
       const formattedHistory =
-        history && history.length > 0
-          ? history
+        limitedHistory && limitedHistory.length > 0
+          ? limitedHistory
               .map((item: HistoryItem) => {
                 return {
                   role: item.role,
