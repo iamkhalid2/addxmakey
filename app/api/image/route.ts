@@ -7,7 +7,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Define the model ID for Gemini 2.0 Flash experimental
-const MODEL_ID = "gemini-2.0-flash-exp";
+const MODEL_ID = "gemini-2.0-flash-exp-image-generation";
 
 // Define interface for the formatted history item
 interface FormattedHistoryItem {
