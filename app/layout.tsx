@@ -11,8 +11,12 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Image Editor",
-  description: "Edit images using Google DeepMind Gemini 2.0",
+  title: "addXmakeY",
+  description: "Edit and generate images using Gemini 2.0",
+  icons: {
+    icon: '/ADAX.png',
+    apple: '/ADAX.png',
+  },
 };
 
 export const viewport: Viewport = {
