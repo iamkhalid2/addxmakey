@@ -3,13 +3,13 @@
     <h2>Conversation History</h2>
     
     {% for message in chat_history|reverse %}
-    <div class="chat-message">
+    <div class="chat-message" data-message-index="{{ loop.index0 }}">
         <div class="user-message">
             <strong>You:</strong> {{ message.prompt }}
         </div>
         
         <div class="ai-response">
-            <strong>Gemini:</strong>
+            <strong>AI:</strong>
             
             {% if message.text_response %}
             <div class="response-text">{{ message.text_response }}</div>
@@ -20,8 +20,11 @@
                 <div class="loading-container">
                     <div class="loading-spinner"></div>
                 </div>
-                <div>
+                <div class="action-buttons">
                     <a href="{{ url_for('download_file', filename=message.download_name) }}" class="button-download">Download Image</a>
+                    {% if not loop.last %}
+                    <button type="button" class="button-regenerate" data-prompt="{{ message.prompt }}" data-index="{{ loop.index0 }}">Regenerate</button>
+                    {% endif %}
                 </div>
             </div>
         </div>

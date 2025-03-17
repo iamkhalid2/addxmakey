@@ -41,11 +41,11 @@ if IS_VERCEL:
     # Dictionary to store uploaded/generated images in memory
     in_memory_files = {}
 
-# Initialize the Gemini client
+# Initialize the AI client
 try:
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
-    print(f"Error initializing Gemini client: {e}")
+    print(f"Error initializing AI client: {e}")
     client = None
 
 # Store chats in memory (in production, use a database)
@@ -68,6 +68,20 @@ def save_image(response, path):
                 pathlib.Path(path).write_bytes(data)
                 return os.path.basename(path)
     return None
+
+def load_image_from_path(image_path):
+    """Load an image from filesystem or memory storage"""
+    if IS_VERCEL:
+        # For Vercel, look for image in memory
+        filename = os.path.basename(image_path)
+        if filename in in_memory_files:
+            return PIL.Image.open(io.BytesIO(in_memory_files[filename]))
+        return None
+    else:
+        # Normal filesystem operation
+        if os.path.exists(image_path):
+            return PIL.Image.open(image_path)
+        return None
 
 @app.route('/')
 def index():
@@ -122,7 +136,10 @@ def generate_image():
             flash(error_msg)
             return redirect(url_for('index'))
     
-    # Check if there's a prompt
+    # Determine if this is a regeneration request
+    is_regeneration = request.form.get('is_regeneration') == 'true'
+    
+    # Get prompt from form
     prompt = request.form.get('prompt', '')
     if not prompt:
         error_msg = "Please provide a prompt for image generation"
@@ -134,8 +151,25 @@ def generate_image():
             flash(error_msg)
             return redirect(url_for('index'))
     
-    # Check if there's an uploaded file (only for the initial message)
-    has_file = 'image' in request.files and request.files['image'].filename != ''
+    # Determine if we need to use a previous image for regeneration
+    previous_image = None
+    if is_regeneration:
+        # Get index of the message to regenerate
+        try:
+            regenerate_index = int(request.form.get('regenerate_index', 0))
+            chat_history = active_chats[chat_id]['history']
+            
+            # Get the previous message's image (one before the one we're regenerating)
+            if regenerate_index < len(chat_history) - 1:
+                previous_message = chat_history[regenerate_index + 1]  # +1 because history is newest-first
+                previous_image_path = previous_message['image_path']
+                previous_image = load_image_from_path(previous_image_path)
+        except (ValueError, IndexError) as e:
+            print(f"Error finding previous image: {e}")
+            # Continue without previous image if there's an error
+    
+    # Check if there's an uploaded file (only for non-regeneration initial messages)
+    has_file = not is_regeneration and 'image' in request.files and request.files['image'].filename != ''
     
     try:
         chat = active_chats[chat_id]['chat']
@@ -159,6 +193,9 @@ def generate_image():
             
             # Send message with the uploaded image
             response = chat.send_message([prompt, image])
+        elif previous_image:
+            # Send message with the previous image for regeneration
+            response = chat.send_message([prompt, previous_image])
         else:
             # Send text-only message
             response = chat.send_message(prompt)
@@ -175,12 +212,29 @@ def generate_image():
         saved_filename = save_image(response, result_path)
         
         # Update chat history
-        active_chats[chat_id]['history'].append({
+        new_message = {
             'prompt': prompt,
             'text_response': text_response,
             'image_path': f"results/{saved_filename}" if IS_VERCEL else result_path,
             'download_name': saved_filename
-        })
+        }
+        
+        # For regeneration, we don't want to add to history, just replace
+        if is_regeneration:
+            # Since we reversed the list for display, we need to handle indexes carefully
+            # chat_history is newest-first, so regenerate_index 0 is the newest message
+            try:
+                regenerate_index = int(request.form.get('regenerate_index', 0))
+                # Remove the message at the regenerate index
+                active_chats[chat_id]['history'].pop(regenerate_index)
+                # Insert the new message at the same index
+                active_chats[chat_id]['history'].insert(regenerate_index, new_message)
+            except (ValueError, IndexError):
+                # If there's an error with the index, just add it as a new message
+                active_chats[chat_id]['history'].insert(0, new_message)
+        else:
+            # For normal messages, insert at beginning (newest first)
+            active_chats[chat_id]['history'].insert(0, new_message)
         
         # Check if it's an AJAX request
         is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'

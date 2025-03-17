@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Image Chat</title>
+    <title>addXmakeY</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/ADAX.png') }}" type="image/png">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +16,14 @@
         h1 {
             color: #333;
             text-align: center;
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 100px;
+            max-height: 100px;
         }
         .container {
             border: 1px solid #ddd;
@@ -124,6 +133,24 @@
         .button-download:hover {
             background-color: #0b7dda;
         }
+        .button-regenerate {
+            display: inline-block;
+            background-color: #FF9800;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            margin-top: 10px;
+            margin-left: 10px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .button-regenerate:hover {
+            background-color: #F57C00;
+        }
+        .action-buttons {
+            margin-top: 10px;
+        }
         /* Loading spinner styles */
         .loading-container {
             display: none;
@@ -161,10 +188,11 @@
     </style>
 </head>
 <body>
-    <h1>Gemini Image Chat</h1>
-    
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='images/ADAX.png') }}" alt="addXmakeY Logo" class="logo">
+    </div>    
     <div class="container">
-        <p>Have a conversation with Gemini AI to generate and modify images:</p>
+        <p>Have a conversation with AI to generate and modify images:</p>
         <ul>
             <li>Start with a prompt to create a new image from scratch</li>
             <li>Optionally upload an existing image to modify</li>
@@ -179,7 +207,7 @@
         </div>
         {% endif %}
         
-        <form id="gemini-form" action="{{ url_for('generate_image') }}" method="post" enctype="multipart/form-data">
+        <form id="addXmakeY-form" action="{{ url_for('generate_image') }}" method="post" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="prompt">Your message:</label>
                 <textarea id="prompt" name="prompt" placeholder="e.g., 'Draw a 3D rendered image of a flying pig with wings and a top hat over a futuristic city' or 'Change the pig to a cat'" required></textarea>
@@ -211,13 +239,13 @@
                 <h2>Conversation History</h2>
                 
                 {% for message in chat_history|reverse %}
-                <div class="chat-message">
+                <div class="chat-message" data-message-index="{{ loop.index0 }}">
                     <div class="user-message">
                         <strong>You:</strong> {{ message.prompt }}
                     </div>
                     
                     <div class="ai-response">
-                        <strong>Gemini:</strong>
+                        <strong>AI:</strong>
                         
                         {% if message.text_response %}
                         <div class="response-text">{{ message.text_response }}</div>
@@ -228,8 +256,11 @@
                             <div class="loading-container">
                                 <div class="loading-spinner"></div>
                             </div>
-                            <div>
+                            <div class="action-buttons">
                                 <a href="{{ url_for('download_file', filename=message.download_name) }}" class="button-download">Download Image</a>
+                                {% if not loop.last %}
+                                <button type="button" class="button-regenerate" data-prompt="{{ message.prompt }}" data-index="{{ loop.index0 }}">Regenerate</button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -242,11 +273,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('gemini-form');
+            const form = document.getElementById('addXmakeY-form');
             const submitBtn = document.getElementById('submit-btn');
             const canvasLoading = document.getElementById('canvas-loading');
             const chatContainer = document.getElementById('chat-container');
+            const promptInput = document.getElementById('prompt');
             
+            // Handle form submission for new messages
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -256,7 +289,14 @@
                 
                 // Create FormData from the form
                 const formData = new FormData(form);
+                // Add flag to indicate this is a new message, not a regeneration
+                formData.append('is_regeneration', 'false');
                 
+                sendRequest(formData);
+            });
+            
+            // Function to handle both new messages and regenerations
+            function sendRequest(formData) {
                 // AJAX request
                 fetch('{{ url_for("generate_image") }}', {
                     method: 'POST',
@@ -285,7 +325,10 @@
                     submitBtn.disabled = false;
                     
                     // Clear the prompt field
-                    document.getElementById('prompt').value = '';
+                    promptInput.value = '';
+                    
+                    // Re-attach event listeners to regenerate buttons
+                    attachRegenerateListeners();
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -300,7 +343,40 @@
                         window.location.reload();
                     }
                 });
-            });
+            }
+            
+            // Function to attach event listeners to regenerate buttons
+            function attachRegenerateListeners() {
+                document.querySelectorAll('.button-regenerate').forEach(button => {
+                    button.addEventListener('click', function() {
+                        // Get data attributes
+                        const prompt = this.getAttribute('data-prompt');
+                        const index = this.getAttribute('data-index');
+                        
+                        // Show loading state for this specific image container
+                        const imageContainer = this.closest('.image-container');
+                        const loadingContainer = imageContainer.querySelector('.loading-container');
+                        if (loadingContainer) {
+                            loadingContainer.style.display = 'flex';
+                        }
+                        
+                        // Disable the button during regeneration
+                        this.disabled = true;
+                        
+                        // Create FormData with the prompt and regeneration flag
+                        const formData = new FormData();
+                        formData.append('prompt', prompt);
+                        formData.append('is_regeneration', 'true');
+                        formData.append('regenerate_index', index);
+                        
+                        // Send the request
+                        sendRequest(formData);
+                    });
+                });
+            }
+            
+            // Initial attachment of regenerate listeners
+            attachRegenerateListeners();
         });
     </script>
 </body>
