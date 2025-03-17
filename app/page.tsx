@@ -6,6 +6,7 @@ import { ImageResultDisplay } from "@/components/ImageResultDisplay";
 import { ImageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { HistoryItem } from "@/lib/types";
+import Image from "next/image";
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
@@ -117,7 +118,7 @@ export default function Home() {
       <Card className="w-full max-w-4xl border-0 bg-card shadow-none">
       <CardHeader className="flex flex-col items-center justify-center space-y-2">
         <div className="flex justify-center w-full">
-          <img src="/ADAX.png" alt="addXmakeY logo" className="w-24 h-24" />
+          <Image src="/ADAX.png" alt="addXmakeY logo" width={96} height={96} />
         </div>
         <span className="text-sm font-mono text-muted-foreground">
           powered by Gemini 2.0 Flash

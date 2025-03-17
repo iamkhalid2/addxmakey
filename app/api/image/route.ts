@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
     let requestData;
     try {
       requestData = await req.json();
-    } catch (e) {
+    } catch (error) {
+      console.error("Error parsing JSON request:", error);
       return NextResponse.json(
         { error: "Invalid JSON request format" },
         { status: 400 }
