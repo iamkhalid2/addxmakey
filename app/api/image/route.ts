@@ -20,8 +20,32 @@ interface FormattedHistoryItem {
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse JSON request instead of FormData
-    const requestData = await req.json();
+    // Verify content type
+    const contentType = req.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      return NextResponse.json(
+        { 
+          error: "Invalid content type. Expected application/json",
+          details: `Received content-type: ${contentType}`
+        },
+        { status: 400 }
+      );
+    }
+
+    // Parse JSON request with better error handling
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      return NextResponse.json(
+        { 
+          error: "Invalid JSON in request body",
+          details: parseError instanceof Error ? parseError.message : "Failed to parse JSON"
+        },
+        { status: 400 }
+      );
+    }
+
     const { prompt, image: inputImage, history } = requestData;
 
     if (!prompt) {
