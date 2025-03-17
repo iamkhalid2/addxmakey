@@ -3,8 +3,8 @@ import { useState } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ImagePromptInput } from "@/components/ImagePromptInput";
 import { ImageResultDisplay } from "@/components/ImageResultDisplay";
-import { ImageIcon, Wand2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImageIcon } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { HistoryItem } from "@/lib/types";
 
 export default function Home() {
