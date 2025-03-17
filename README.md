@@ -1,132 +1,106 @@
-# Gemini 2.0 Flash Image Generation and Editing
+# addXmakeY 🎨
 
-Nextjs quickstart for to generating and editing images with Google Gemini 2.0 Flash. It allows users to generate images from text prompts or edit existing images through natural language instructions, maintaining conversation context for iterative refinements. Try out the hosted demo at [Hugging Face Spaces](https://huggingface.co/spaces/philschmid/image-generation-editing).
+A modern web application for AI-powered image generation and editing using Google's Gemini 2.0 Flash API.
 
-https://github.com/user-attachments/assets/8ffa5ee3-1b06-46a9-8b5e-761edb0e00c3
+## Features ✨
 
-Get your `GEMINI_API_KEY` key [here](https://ai.google.dev/gemini-api/docs/api-key) and start building.
+- 🖼️ Image Generation: Create unique images from text descriptions
+- ✏️ Image Editing: Modify existing images using natural language prompts
+- 🌓 Dark/Light Theme: Built-in theme support with smooth transitions
+- 📱 Responsive Design: Works seamlessly on desktop and mobile devices
+- 🔄 Conversation History: Keep track of your image generation/editing journey
+- ⬇️ Easy Downloads: Download generated images with one click
 
-**How It Works:**
+## Tech Stack 🛠️
 
-1. **Create Images**: Generate images from text prompts using Gemini 2.0 Flash
-2. **Edit Images**: Upload an image and provide instructions to modify it
-3. **Conversation History**: Maintain context through a conversation with the AI for iterative refinements
-4. **Download Results**: Save your generated or edited images
+- **Framework**: [Next.js 15](https://nextjs.org/) with TypeScript
+- **AI**: [Google Generative AI](https://ai.google.dev/) (Gemini 2.0 Flash)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with custom theme configuration
+- **UI Components**: Custom components built with [Radix UI](https://www.radix-ui.com/)
+- **File Handling**: [React Dropzone](https://react-dropzone.js.org/) for image uploads
+- **Theme Management**: [next-themes](https://github.com/pacocoursey/next-themes)
 
-## Basic request
+## Getting Started 🚀
 
-For developers who want to call the Gemini API directly, you can use the Google Generative AI JavaScript SDK:
+### Prerequisites
 
-```javascript
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const fs = require("fs");
+- Node.js 18.x or later
+- A Google AI API key (Gemini 2.0)
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+### Installation
 
-async function generateImage() {
-  const contents =
-    "Hi, can you create a 3d rendered image of a pig " +
-    "with wings and a top hat flying over a happy " +
-    "futuristic scifi city with lots of greenery?";
-
-  // Set responseModalities to include "Image" so the model can generate
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
-    generationConfig: {
-      responseModalities: ["Text", "Image"]
-    }
-  });
-
-  try {
-    const response = await model.generateContent(contents);
-    for (const part of response.response.candidates[0].content.parts) {
-      // Based on the part type, either show the text or save the image
-      if (part.text) {
-        console.log(part.text);
-      } else if (part.inlineData) {
-        const imageData = part.inlineData.data;
-        const buffer = Buffer.from(imageData, "base64");
-        fs.writeFileSync("gemini-native-image.png", buffer);
-        console.log("Image saved as gemini-native-image.png");
-      }
-    }
-  } catch (error) {
-    console.error("Error generating content:", error);
-  }
-}
-```
-
-## Features
-
-- 🎨 Text-to-image generation with Gemini 2.0 Flash
-- 🖌️ Image editing through natural language instructions
-- 💬 Conversation history for context-aware image refinements
-- 📱 Responsive UI built with Next.js and shadcn/ui
-- 🔄 Seamless workflow between creation and editing modes
-- ⚡ Uses Gemini 2.0 Flash Javascript SDK
-
-## Getting Started
-
-### Local Development
-
-First, set up your environment variables:
-
+1. Clone the repository:
 ```bash
-cp .env.example .env
+git clone <repository-url>
+cd addxmakey
 ```
 
-Add your Google AI Studio API key to the `.env` file:
-
-_Get your `GEMINI_API_KEY` key [here](https://ai.google.dev/gemini-api/docs/api-key)._
-
-```
-GEMINI_API_KEY=your_google_api_key
-```
-
-Then, install dependencies and run the development server:
-
+2. Install dependencies:
 ```bash
 npm install
+```
+
+3. Create a `.env` file in the root directory and add your Google AI API key:
+```env
+GEMINI_API_KEY=your_api_key_here
+```
+
+4. Run the development server:
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deployment
-
-### Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgoogle-gemini%2Fgemini-image-editing-nextjs-quickstart&env=GEMINI_API_KEY&envDescription=Create%20an%20account%20and%20generate%20an%20API%20key&envLink=https%3A%2F%2Faistudio.google.com%2Fapp%2Fu%2F0%2Fapikey&demo-url=https%3A%2F%2Fhuggingface.co%2Fspaces%2Fphilschmid%2Fimage-generation-editing)
-
-### Docker
-
-1. Build the Docker image:
+### Building for Production 🏗️
 
 ```bash
-docker build -t nextjs-gemini-image-editing .
+npm run build
+npm start
 ```
 
-2. Run the container with your Google API key:
+## Environment Variables 🔐
 
-```bash
-docker run -p 3000:3000 -e GEMINI_API_KEY=your_google_api_key nextjs-gemini-image-editing
+- `GEMINI_API_KEY`: Your Google Generative AI API key
+
+## Project Structure 📁
+
+```
+addxmakey/
+├── app/                   # Next.js app router components
+├── components/           # Reusable UI components
+│   ├── ui/              # Base UI components
+│   └── ...              # Feature-specific components
+├── lib/                 # Utility functions and types
+└── public/              # Static assets
 ```
 
-Or using an environment file:
+## Features in Detail 🔍
 
-```bash
-# Run container with env file
-docker run -p 3000:3000 --env-file .env nextjs-gemini-image-editing
-```
+### Image Generation
+- Input text descriptions to generate AI images
+- Real-time progress tracking
+- High-quality image output
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+### Image Editing
+- Upload existing images
+- Describe desired changes in natural language
+- Preview and download edited results
 
-## Technologies Used
+### User Interface
+- Clean, modern design
+- Responsive layout
+- Accessible components
+- Dark/light theme support
 
-- [Next.js](https://nextjs.org/) - React framework for the web application
-- [Google Gemini 2.0 Flash](https://deepmind.google/technologies/gemini/) - AI model for image generation and editing
-- [shadcn/ui](https://ui.shadcn.com/) - Re-usable components built using Radix UI and Tailwind CSS
+## Contributing 🤝
 
-## License
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
+## License 📄
+
+This project is private and proprietary.
+
+---
+
+Built with ❤️ using Next.js and Google's Gemini 2.0
