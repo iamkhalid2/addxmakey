@@ -27,11 +27,14 @@ export default function Home() {
       // If we have a generated image, use that for editing, otherwise use the uploaded image
       const imageToEdit = generatedImage || image;
 
+      // Keep only the last interaction in history to prevent payload size issues
+      const recentHistory = history.slice(-2);
+
       // Prepare the request data as JSON
       const requestData = {
         prompt,
         image: imageToEdit,
-        history: history.length > 0 ? history : undefined,
+        history: recentHistory.length > 0 ? recentHistory : undefined,
       };
 
       const response = await fetch("/api/image", {
@@ -43,8 +46,16 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate image");
+        let errorMessage = "Failed to generate image";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          if (response.status === 413) {
+            errorMessage = "Request too large. Try starting a new conversation.";
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

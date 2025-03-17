@@ -25,13 +25,21 @@ export async function POST(req: NextRequest) {
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (contentLength > maxSize) {
       return NextResponse.json(
-        { error: "Request payload too large" },
+        { error: "Request payload too large. Try starting a new conversation or using a smaller image." },
         { status: 413 }
       );
     }
 
-    // Parse JSON request instead of FormData
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      return NextResponse.json(
+        { error: "Invalid JSON request format" },
+        { status: 400 }
+      );
+    }
+
     const { prompt, image: inputImage, history } = requestData;
 
     if (!prompt) {
@@ -41,8 +49,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Limit history size - keep only the last 2 interactions
-    const limitedHistory = history?.slice(-4) || [];
+    // Keep only last 2 interactions to prevent payload size issues
+    const limitedHistory = history?.slice(-2) || [];
 
     // Get the model with the correct configuration
     const model = genAI.getGenerativeModel({
