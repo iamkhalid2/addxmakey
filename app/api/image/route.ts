@@ -68,40 +68,42 @@ export async function POST(req: NextRequest) {
     let result;
 
     try {
-      // Convert history to the format expected by Gemini API
-      const formattedHistory =
-        limitedHistory && limitedHistory.length > 0
-          ? limitedHistory
-              .map((item: HistoryItem) => {
-                return {
-                  role: item.role,
-                  parts: item.parts
-                    .map((part: HistoryPart) => {
-                      if (part.text) {
-                        return { text: part.text };
-                      }
-                      if (part.image && item.role === "user") {
-                        const imgParts = part.image.split(",");
-                        if (imgParts.length > 1) {
-                          return {
-                            inlineData: {
-                              data: imgParts[1],
-                              mimeType: part.image.includes("image/png")
-                                ? "image/png"
-                                : "image/jpeg",
-                            },
-                          };
-                        }
-                      }
-                      return { text: "" };
-                    })
-                    .filter((part) => Object.keys(part).length > 0), // Remove empty parts
-                };
-              })
-              .filter((item: FormattedHistoryItem) => item.parts.length > 0) // Remove items with no parts
-          : [];
+      // Validate and format history more strictly
+      const formattedHistory = limitedHistory.map((item: HistoryItem) => {
+        if (!item || !item.role || !Array.isArray(item.parts)) {
+          console.warn('Skipping invalid history item:', item);
+          return null;
+        }
 
-      // Create a chat session with the formatted history
+        const validParts = item.parts.map(part => {
+          if (part.text) {
+            return { text: part.text };
+          }
+          if (part.image && item.role === "user") {
+            const imgParts = part.image.split(",");
+            if (imgParts.length > 1) {
+              return {
+                inlineData: {
+                  data: imgParts[1],
+                  mimeType: part.image.includes("image/png") ? "image/png" : "image/jpeg",
+                }
+              };
+            }
+          }
+          return null;
+        }).filter(Boolean);
+
+        if (validParts.length === 0) {
+          return null;
+        }
+
+        return {
+          role: item.role,
+          parts: validParts
+        };
+      }).filter(Boolean);
+
+      // Create a chat session with the validated history
       const chat = model.startChat({
         history: formattedHistory,
       });
