@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Download, RotateCcw, MessageCircle, ZoomIn, ZoomOut, Share2, Copy, Check, Maximize2, Minimize2 } from "lucide-react";
+import { Download, RotateCcw, MessageCircle, ZoomIn, ZoomOut, Copy, Check, Maximize2, Minimize2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { HistoryItem, HistoryPart } from "@/lib/types";
 import Image from "next/image";
@@ -26,7 +26,6 @@ export function ImageResultDisplay({
   onReset,
   conversationHistory = [],
 }: ImageResultDisplayProps) {
-  const [showHistory, setShowHistory] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -40,11 +39,6 @@ export function ImageResultDisplay({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  // Toggle conversation history visibility
-  const toggleHistory = () => {
-    setShowHistory(!showHistory);
   };
 
   // Handle zoom functionality
@@ -79,7 +73,6 @@ export function ImageResultDisplay({
 
   // Format timestamp for history display
   const formatTimestamp = (index: number) => {
-    const now = new Date();
     const minutesAgo = conversationHistory.length - index > 1 
       ? (conversationHistory.length - index) * 2 // Simulate time passing
       : 'Just now';

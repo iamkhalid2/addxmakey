@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ImagePromptInput } from "@/components/ImagePromptInput";
 import { ImageResultDisplay } from "@/components/ImageResultDisplay";
-import { ImageIcon, Sparkles, ArrowRight, Star, Loader2 } from "lucide-react";
+import { ImageIcon, Sparkles, ArrowRight, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { HistoryItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -345,7 +345,7 @@ export default function Home() {
           </motion.div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[0, 1, 2].map((i) => (
+            {showcaseExamples.map((example, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
@@ -365,9 +365,7 @@ export default function Home() {
                     transition={{ duration: 0.4 }}
                   >
                     <Image 
-                      src={i === 0 ? "/samples/sample1-before.jpg" : 
-                            i === 1 ? "/samples/sample2-before.jpg" : 
-                            "/samples/sample3-before.jpg"} 
+                      src={example.before} 
                       alt="Before" 
                       fill
                       className="object-cover"
@@ -381,9 +379,7 @@ export default function Home() {
                     transition={{ duration: 0.4 }}
                   >
                     <Image 
-                      src={i === 0 ? "/samples/sample1-after.jpg" : 
-                            i === 1 ? "/samples/sample2-after.jpg" : 
-                            "/samples/sample3-after.jpg"} 
+                      src={example.after} 
                       alt="After" 
                       fill
                       className="object-cover"
@@ -406,7 +402,10 @@ export default function Home() {
                      i === 1 ? "Convert a landscape into a magical fantasy world" : 
                      "Apply the artistic style of famous painters to photos"}
                   </p>
-                  <div className="flex justify-end">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground line-clamp-1 max-w-[70%]">
+                      <span className="font-medium">Prompt:</span> {example.prompt}
+                    </p>
                     <Button 
                       variant="ghost" 
                       size="sm" 

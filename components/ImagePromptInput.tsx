@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Wand2, Sparkles, Send, Lightbulb, ArrowRight } from "lucide-react";
+import { Wand2, Sparkles, Lightbulb, ArrowRight } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -268,7 +268,7 @@ export function ImagePromptInput({
                   <ul className="list-disc list-inside mt-1 pl-1 text-xs space-y-1">
                     <li>Be specific about what you want to change</li>
                     <li>Mention colors, styles, and areas to modify</li>
-                    <li>Try terms like "convert to", "change", or "transform"</li>
+                    <li>Try terms like &quot;convert to&quot;, &quot;change&quot;, or &quot;transform&quot;</li>
                   </ul>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "./ui/button";
-import { Upload as UploadIcon, Image as ImageIcon, X, FileIcon, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, Image as ImageIcon, X, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,6 +20,11 @@ export function formatFileSize(bytes: number): string {
     Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   );
 }
+
+// Wrapper to separate dropzone from motion props
+const DropzoneWrapper = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  return <div {...props}>{children}</div>;
+};
 
 export function ImageUpload({ onImageSelect, currentImage }: ImageUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -140,6 +145,14 @@ export function ImageUpload({ onImageSelect, currentImage }: ImageUploadProps) {
       transition: { duration: 0.3 }
     }
   };
+  
+  const dropzoneAnimationProps = {
+    key: "dropzone",
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
+    transition: { duration: 0.3 }
+  };
 
   return (
     <motion.div 
@@ -150,62 +163,62 @@ export function ImageUpload({ onImageSelect, currentImage }: ImageUploadProps) {
     >
       <AnimatePresence mode="wait">
         {!currentImage ? (
-          <motion.div
-            key="dropzone"
-            exit={{ opacity: 0, y: -20 }}
-            {...getRootProps()}
-            className={`
-              min-h-[220px] p-6 rounded-xl border-2 border-dashed
-              transition-all duration-300 ease-in-out 
-              ${error ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-950/20' : 
-                isDragging || isDragActive ? 
-                'border-primary bg-primary/5 scale-[1.02] shadow-lg' : 
-                'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/70'
-              }
-              cursor-pointer flex flex-col items-center justify-center gap-4
-            `}
-          >
-            <input {...getInputProps()} />
-            
-            <motion.div
-              variants={itemVariants}
-              className={`w-16 h-16 rounded-full flex items-center justify-center
-                ${error ? 'bg-red-100 dark:bg-red-900/30 text-red-500' : 
-                  isDragging || isDragActive ? 'bg-primary/10 text-primary' : 
-                  'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+          <motion.div {...dropzoneAnimationProps}>
+            <DropzoneWrapper
+              {...getRootProps()}
+              className={`
+                min-h-[220px] p-6 rounded-xl border-2 border-dashed
+                transition-all duration-300 ease-in-out 
+                ${error ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-950/20' : 
+                  isDragging || isDragActive ? 
+                  'border-primary bg-primary/5 scale-[1.02] shadow-lg' : 
+                  'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/70'
                 }
+                cursor-pointer flex flex-col items-center justify-center gap-4
               `}
             >
-              {error ? (
-                <AlertCircle className="w-8 h-8" />
-              ) : (
-                <UploadIcon className="w-8 h-8" />
-              )}
-            </motion.div>
-            
-            <motion.div variants={itemVariants} className="text-center space-y-1">
-              {error ? (
-                <p className="text-sm font-medium text-red-500">{error}</p>
-              ) : (
-                <>
-                  <p className="text-lg font-medium text-foreground">
-                    {isDragging || isDragActive ? "Drop your image here" : "Drop your image here or click to browse"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports JPEG, PNG and WebP (maximum 10MB)
-                  </p>
-                </>
-              )}
-            </motion.div>
-            
-            <motion.div 
-              variants={itemVariants}
-              className="flex items-center justify-center mt-2"
-            >
-              <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-lg shadow-sm text-xs text-muted-foreground">
-                Or paste an image from your clipboard
-              </div>
-            </motion.div>
+              <input {...getInputProps()} />
+              
+              <motion.div
+                variants={itemVariants}
+                className={`w-16 h-16 rounded-full flex items-center justify-center
+                  ${error ? 'bg-red-100 dark:bg-red-900/30 text-red-500' : 
+                    isDragging || isDragActive ? 'bg-primary/10 text-primary' : 
+                    'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                  }
+                `}
+              >
+                {error ? (
+                  <AlertCircle className="w-8 h-8" />
+                ) : (
+                  <UploadIcon className="w-8 h-8" />
+                )}
+              </motion.div>
+              
+              <motion.div variants={itemVariants} className="text-center space-y-1">
+                {error ? (
+                  <p className="text-sm font-medium text-red-500">{error}</p>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium text-foreground">
+                      {isDragging || isDragActive ? "Drop your image here" : "Drop your image here or click to browse"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Supports JPEG, PNG and WebP (maximum 10MB)
+                    </p>
+                  </>
+                )}
+              </motion.div>
+              
+              <motion.div 
+                variants={itemVariants}
+                className="flex items-center justify-center mt-2"
+              >
+                <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-lg shadow-sm text-xs text-muted-foreground">
+                  Or paste an image from your clipboard
+                </div>
+              </motion.div>
+            </DropzoneWrapper>
           </motion.div>
         ) : (
           <motion.div
